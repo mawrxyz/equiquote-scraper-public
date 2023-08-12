@@ -20,6 +20,12 @@ jobs:
         steps:
             - uses: actions/checkout@v3
             - uses: actions/setup-python@v4
+              with:
+                python-version: 3.8
+                
+            # Install dependencies
+            - name: Install dependencies
+              run: pip install -r requirements.txt
             
             # Check the counter
             - name: Get counter value
