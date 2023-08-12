@@ -89,7 +89,7 @@ def get_equiquote_results(text_list):
         return
 
     try:
-        driver.get("http://localhost:5000")
+        driver.get("https://source-gender-tool.onrender.com/")
     except Exception as e:
         print("Error loading app:", e)
         return []
