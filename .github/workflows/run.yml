@@ -1,0 +1,33 @@
+# setup
+on:
+    push:
+    # supplies a button in gh for manual running
+    workflow_dispatch:
+    # when to run the file
+    schedule:
+        - cron:  '0 16 * * *' # every day at 4pm UTC
+
+# lets gh change files
+permissions: write-all
+
+# what to do when running the code
+jobs:
+    run:
+        runs-on: ubuntu-latest
+        env:
+            NODE_ENV: development
+        steps:
+            - uses: actions/checkout@v3
+            - uses: actions/setup-python@v4
+            
+            # run and save output with a timestamped filename so we can distinguish what we've got
+            - run: python 'BBC scraper'.py > data/$(date +%Y%m%d-%H%M%S).txt
+            
+            # add the data to our repository
+            - run: |-
+                  git config user.name 'GitHub Actions'
+                  git config user.email 'actions@users.noreply.github.com'
+                  
+                  git add -A
+                  git commit -m 'Updates' || exit 0
+                  git push
