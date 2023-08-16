@@ -387,12 +387,15 @@ def run_scrape_task():
     '''Get links to top 5 news articles from Mail Online, BBC and The Sun homepages,
     scrape their content, run them through EquiQuote and export all of the article data and results as a CSV'''
     
+    def sanitise_text(text):
+    return ''.join(char if ord(char) <= 0xFFFF else '' for char in text)
+
     def scrape_articles(driver, links, source_name):
         articles_data = []
         text_list = []
 
         for link in links:
-            article_data = {'link': link}
+            article_data = {'link': link, 'title': 'N/A', 'byline': 'N/A', 'time': 'N/A', 'text': 'N/A', 'recommendations': 'N/A', 'sources_detected': 'N/A'}
             try:
                 if source_name == "BBC":
                     article = BBCArticleContent(driver, link)
@@ -423,6 +426,7 @@ def run_scrape_task():
 
                 try:
                     article_data['text'] = ' '.join(article.text.split()[:1000])
+                    article_data['text'] = sanitise_text(article_data['text'])
                 except Exception as e:
                     print(f"Error retrieving text for link {link}:", e)
                     article_data['text'] = 'N/A'
