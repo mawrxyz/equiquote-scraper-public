@@ -1,13 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # EquiQuote Scraper
-# 
-# This code scrapes the links of the top 5 online stories from the Daily Mail, BBC and The Sun homepages. It scrapes each story for its title, timestamp, byline and article text. It then runs the article text through [EquiQuote](https://github.com/mawrxyz/source-gender-tool/), my tool to detect the gender of news sources and scrapes the results generated. Finally, it exports a CSV with the article data as well as results from EquiQuote. 
-# 
-# This script is meant to help test the quality of results from EquiQuote for my dissertation project. The three news outlets chosen were identified as the [top 3 news brands](https://pressgazette.co.uk/media-audience-and-business-data/media_metrics/most-popular-websites-news-uk-monthly-2/) in the UK by the Press Gazette in July 2023.
-
-
 from selenium import webdriver
 from selenium.webdriver.common.alert import Alert
 from selenium.webdriver.common.keys import Keys
@@ -21,7 +14,6 @@ import time
 import csv
 from datetime import datetime
 import json
-from threading import Thread
 
 
 # Run scraper only 5 times
@@ -40,6 +32,68 @@ if read_counter() >= 5:
     exit()
 
 
+# ## BBC
+
+
+class ScrapeBBCHomepage: 
+    '''Get top 5 links that are NOT live pages or videos from BBC homepage'''
+    
+    home_url = "https://www.bbc.co.uk/news"
+    
+    def __init__(self, driver): 
+        self.driver = driver
+        self.driver.get(self.home_url)
+        self.links = self.get_links()
+    
+    def get_links(self) -> list: 
+        top_stories = self.driver.find_element(By.ID, 'nw-c-topstories-domestic')
+        top_links = top_stories.find_elements(By.CSS_SELECTOR, 'a.gs-c-promo-heading')
+        
+        unique_urls = set()
+        top_5_urls = []
+
+        for link in top_links:
+            full_url = link.get_attribute('href')
+            if full_url.startswith("https://www.bbc.co.uk/news") and "/live/" not in full_url             and "/av/" not in full_url and full_url not in unique_urls:
+                unique_urls.add(full_url)
+                top_5_urls.append(full_url)
+
+            if len(top_5_urls) == 5:
+                break
+
+        return top_5_urls
+
+class BBCArticleContent: 
+    '''Scrape the content for each BBC article'''
+    
+    def __init__(self, driver, url):
+        self.driver = driver
+        self.driver.get(url)
+        
+        self.time = self.get_time()
+        self.text = self.get_text()
+        self.title = self.get_title()
+        self.byline = self.get_byline()
+    
+    def get_time(self) -> str: 
+        try:
+            time_element = self.driver.find_element(By.CSS_SELECTOR, 'time[data-testid="timestamp"]')
+            return time_element.get_attribute('dateTime')
+        except NoSuchElementException: 
+            return ""
+        
+    def get_text(self) -> str: 
+        paragraphs = self.driver.find_elements(By.CSS_SELECTOR, 'div[data-component="text-block"] p.ssrcss-1q0x1qg-Paragraph.e1jhz7w10')
+        return " ".join([p.text for p in paragraphs if 'ssrcss-xbdn93-ItalicText.e5tfeyi2' not in p.get_attribute('class')])
+    
+    def get_title(self) -> str: 
+        return self.driver.find_element(By.CSS_SELECTOR, "h1#main-heading").text
+    
+    def get_byline(self) -> str: 
+        try:
+            return self.driver.find_element(By.CSS_SELECTOR, "div.ssrcss-68pt20-Text-TextContributorName").text
+        except NoSuchElementException: 
+            return ""
 # ## The Daily Mail
 
 
@@ -124,70 +178,6 @@ class MailArticleContent:
         try:
             return self.wait.until(EC.visibility_of_element_located((By.CLASS_NAME, "author"))).text
         except (NoSuchElementException, TimeoutException): 
-            return ""
-
-
-# ## BBC
-
-
-class ScrapeBBCHomepage: 
-    '''Get top 5 links that are NOT live pages or videos from BBC homepage'''
-    
-    home_url = "https://www.bbc.co.uk/news"
-    
-    def __init__(self, driver): 
-        self.driver = driver
-        self.driver.get(self.home_url)
-        self.links = self.get_links()
-    
-    def get_links(self) -> list: 
-        top_stories = self.driver.find_element(By.ID, 'nw-c-topstories-domestic')
-        top_links = top_stories.find_elements(By.CSS_SELECTOR, 'a.gs-c-promo-heading')
-        
-        unique_urls = set()
-        top_5_urls = []
-
-        for link in top_links:
-            full_url = link.get_attribute('href')
-            if full_url.startswith("https://www.bbc.co.uk/news") and "/live/" not in full_url             and "/av/" not in full_url and full_url not in unique_urls:
-                unique_urls.add(full_url)
-                top_5_urls.append(full_url)
-
-            if len(top_5_urls) == 5:
-                break
-
-        return top_5_urls
-
-class BBCArticleContent: 
-    '''Scrape the content for each BBC article'''
-    
-    def __init__(self, driver, url):
-        self.driver = driver
-        self.driver.get(url)
-        
-        self.time = self.get_time()
-        self.text = self.get_text()
-        self.title = self.get_title()
-        self.byline = self.get_byline()
-    
-    def get_time(self) -> str: 
-        try:
-            time_element = self.driver.find_element(By.CSS_SELECTOR, 'time[data-testid="timestamp"]')
-            return time_element.get_attribute('dateTime')
-        except NoSuchElementException: 
-            return ""
-        
-    def get_text(self) -> str: 
-        paragraphs = self.driver.find_elements(By.CSS_SELECTOR, 'div[data-component="text-block"] p.ssrcss-1q0x1qg-Paragraph.e1jhz7w10')
-        return " ".join([p.text for p in paragraphs if 'ssrcss-xbdn93-ItalicText.e5tfeyi2' not in p.get_attribute('class')])
-    
-    def get_title(self) -> str: 
-        return self.driver.find_element(By.CSS_SELECTOR, "h1#main-heading").text
-    
-    def get_byline(self) -> str: 
-        try:
-            return self.driver.find_element(By.CSS_SELECTOR, "div.ssrcss-68pt20-Text-TextContributorName").text
-        except NoSuchElementException: 
             return ""
 
 
@@ -488,19 +478,19 @@ def run_scrape_task():
     except Exception as e:
         print("Error initialising webdriver:", e)
         return
-    
-    try:
-        mail_home = ScrapeMailHomepage(driver)
-        print("Mail Online links found: ", mail_home.links)
-    except Exception as e:
-        print("Error scraping Mail Online homepage:", e)
-        return
 
     try:
         bbc_home = ScrapeBBCHomepage(driver)
         print("BBC links found: ", bbc_home.links)
     except Exception as e:
         print("Error scraping BBC homepage:", e)
+        return
+    
+    try:
+        mail_home = ScrapeMailHomepage(driver)
+        print("Mail Online links found: ", mail_home.links)
+    except Exception as e:
+        print("Error scraping Mail Online homepage:", e)
         return
     
     try:
@@ -512,29 +502,19 @@ def run_scrape_task():
     
     driver.quit()
 
-    def scrape_articles_threaded(links, source_name):
+    def execute_scrape(links, source_name):
         try:
             service = Service(ChromeDriverManager().install())
             driver = webdriver.Chrome(service=service)
             scrape_articles(driver, links, source_name)
-            driver.quit()
         except Exception as e:
-            print(f"Error in scrape_articles_threaded for {source_name}:", e)
+            print(f"Error in scraping articles for {source_name}:", e)
+        finally:
+            driver.quit()
 
-    # Create separate threads for each source
-    mail_thread = Thread(target=scrape_articles_threaded, args=(mail_home.links, "Mail"))
-    bbc_thread = Thread(target=scrape_articles_threaded, args=(bbc_home.links, "BBC"))
-    sun_thread = Thread(target=scrape_articles_threaded, args=(sun_home.links, "Sun"))
-
-    # Start the threads
-    mail_thread.start()
-    bbc_thread.start()
-    sun_thread.start()
-
-    # Wait for all threads to complete
-    mail_thread.join()
-    bbc_thread.join()
-    sun_thread.join()
+    execute_scrape(bbc_home.links, "BBC")
+    execute_scrape(mail_home.links, "Mail")
+    execute_scrape(sun_home.links, "Sun")
 
     print("All scrape tasks completed")
 
