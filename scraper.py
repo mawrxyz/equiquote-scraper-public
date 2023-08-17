@@ -54,7 +54,7 @@ class ScrapeBBCHomepage:
 
         for link in top_links:
             full_url = link.get_attribute('href')
-            if full_url.startswith("https://www.bbc.co.uk/news") and "/live/" not in full_url             and "/av/" not in full_url and full_url not in unique_urls:
+            if full_url.startswith("https://www.bbc.co.uk/news") and "/live/" not in full_url and "/av/" not in full_url and full_url not in unique_urls:
                 unique_urls.add(full_url)
                 top_5_urls.append(full_url)
 
@@ -94,6 +94,8 @@ class BBCArticleContent:
             return self.driver.find_element(By.CSS_SELECTOR, "div.ssrcss-68pt20-Text-TextContributorName").text
         except NoSuchElementException: 
             return ""
+
+        
 # ## The Daily Mail
 
 
@@ -142,7 +144,7 @@ class MailArticleContent:
         except (NoSuchElementException, TimeoutException):
             print('No cookie consent prompt found')
             
-        time.sleep(5)
+        time.sleep(5) # Wait because the pages seem to take some time to fully load dynamically
         
         self.time = self.get_time()
         self.text = self.get_text()
@@ -280,22 +282,12 @@ class SunArticleContent:
 
 def get_equiquote_results(text_list):
     '''Run article text through local version of EquiQuote and scrape results'''
-    
-    def content_has_loaded(driver):
-        results_container = driver.find_element(By.CSS_SELECTOR, "div#results_container")
-        current_content = results_container.text
 
-        time.sleep(5) 
-
-        new_content = results_container.text
-
-        return current_content == new_content 
-    
     try:
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service)
     except Exception as e:
-        print("Error initialising webdriver:", e)
+        print("Error initializing webdriver:", e)
         return
 
     try:
@@ -305,8 +297,8 @@ def get_equiquote_results(text_list):
         return []
 
     wait = WebDriverWait(driver, 150)
-    
     recommendations_list = []
+    source_suggestions_list = []
     sources_detected_list = []
 
     for text in text_list:
@@ -315,28 +307,85 @@ def get_equiquote_results(text_list):
             text_box = driver.find_element(By.CSS_SELECTOR, "textarea#article_text")
             text_box.clear()
             text_box.send_keys(text)
+            print("Text entered into textbox")
         except Exception as e:
             print("Error entering text into textbox:", e)
-            continue  # Move on to the next text
+            recommendations_list.append('N/A')
+            source_suggestions_list.append('N/A')
+            sources_detected_list.append('N/A')
 
         try:
             time.sleep(2)
             submit_button = driver.find_element(By.CSS_SELECTOR, "button#analyse-button")
             driver.execute_script("arguments[0].click();", submit_button)
-            wait.until(lambda x: driver.find_element(By.CSS_SELECTOR, "div#results_statement").is_displayed())
+            print("Text submitted")
         except Exception as e:
             print("Error submitting or waiting for results:", e)
-            continue  # Move on to the next text
+            recommendations_list.append('N/A')
+            source_suggestions_list.append('N/A')
+            sources_detected_list.append('N/A')
 
         try:
-            wait.until(content_has_loaded)
-            time.sleep(2)
+            wait.until(EC.visibility_of_element_located((By.ID, 'loading-spinner')))
+            print("Loading results")
+            wait.until(EC.invisibility_of_element_located((By.ID, 'loading-spinner')))
+            print("Done loading results")
+        except Exception as e:
+            print("Results did not load:", e)
+            recommendations_list.append('N/A')
+            source_suggestions_list.append('N/A')
+            sources_detected_list.append('N/A')
+        
+        try:
+            temp_message_element = driver.find_element(By.ID, "temp-message")
+            if temp_message_element.is_displayed():
+                print("Generating source suggestions")
+                # Temp-message is present and displayed, wait for it to disappear
+                wait.until_not(EC.presence_of_element_located((By.ID, "temp-message")))
+                print("Source suggestions generated")
+        except NoSuchElementException:
+            # Temp-message is not present, nothing to wait for
+            pass
+        except TimeoutException:
+            # Temp-message did not disappear within the timeout period
+            print("Warning: temp-message did not disappear within the timeout period.")
+
+        try:
+            # Click on each link in the "li" elements and get the source suggestions
+            job_links_ul = driver.find_element(By.ID, "job_links_ul")
+            job_links = job_links_ul.find_elements(By.TAG_NAME, "a")
+            if not job_links:  # Check if the list of job links is empty
+                source_suggestions_list.append("N/A")
+            else:
+                print("Source suggestions found.")
+                for job_link in job_links:
+                    job_link.click()
+                    wait.until(EC.visibility_of_element_located((By.ID, "myModal")))
+                    print("Modal opened")
+                    modal_body = driver.find_element(By.ID, "modal_body")
+                    source_suggestions_list.append({"job": job_link.text, "suggestions": modal_body.text})
+                    print("Suggestions for ", job_link.text, ":", modal_body.text)
+                    # Close the modal
+                    close_button = driver.find_element(By.CLASS_NAME, "close")
+                    close_button.click()
+                    print("Modal closed")
+        except NoSuchElementException:
+            print("No job links found.")
+
+        try:
             recommendations_element = driver.find_element(By.ID, 'recommendations')
             recommendations_list.append(recommendations_element.text)
-            
+            print("Results statement and text: ", recommendations_element.text)
+        except Exception as e:
+            print("Error retrieving the results:", e)
+            recommendations_list.append('N/A')
+            source_suggestions_list.append('N/A')
+            sources_detected_list.append('N/A')
+
+        try:
             # Get the sources_detected table by id and extract the data
             sources_detected_table = driver.find_element(By.ID, 'source_table')
-            
+
             # Get header row and extract keys from th elements
             header_row = sources_detected_table.find_element(By.TAG_NAME, 'tr')
             header_cells = header_row.find_elements(By.TAG_NAME, 'th')
@@ -364,38 +413,43 @@ def get_equiquote_results(text_list):
                     cell_data_dict[key] = final_text
                 table_data.append(cell_data_dict)
 
-            sources_detected_list.append(json.dumps(table_data))
+            if not table_data:
+                sources_detected_list.append("N/A")
+            else:
+                sources_detected_list.append(json.dumps(table_data))
+                print("Sources detected: ", sources_detected_list)
         except Exception as e:
-            print("Error retrieving the results:", e)
-            continue  # Move on to the next text
-
+            print("Error processing the sources_detected table:", e)
+            sources_detected_list.append('N/A')
+        
         try:
             reset_button = driver.find_element(By.CSS_SELECTOR, "button#reset-button")
             reset_button.click()
+            print("Clicked to reset")
         except Exception as e:
             print("Error clicking the reset button:", e)
             continue  # Move on to the next text
-        
+
     driver.quit()
-    return recommendations_list, sources_detected_list
+    return recommendations_list, source_suggestions_list, sources_detected_list
 
 
 # ## Putting it all together
 
 
 def run_scrape_task():
-    '''Get links to top 5 news articles from Mail Online, BBC and The Sun homepages,
+    '''Get links to top 5 news articles from BBC, Mail Online and The Sun homepages,
     scrape their content, run them through EquiQuote and export all of the article data and results as a CSV'''
     
     def sanitise_text(text):
-    return ''.join(char if ord(char) <= 0xFFFF else '' for char in text)
-
+        return ''.join(char if ord(char) <= 0xFFFF else '' for char in text)
+    
     def scrape_articles(driver, links, source_name):
         articles_data = []
         text_list = []
 
         for link in links:
-            article_data = {'link': link, 'title': 'N/A', 'byline': 'N/A', 'time': 'N/A', 'text': 'N/A', 'recommendations': 'N/A', 'sources_detected': 'N/A'}
+            article_data = {'link': link, 'title': 'N/A', 'byline': 'N/A', 'time': 'N/A', 'text': 'N/A', 'recommendations': 'N/A', 'source_suggestions': 'N/A', 'sources_detected': 'N/A'}
             try:
                 if source_name == "BBC":
                     article = BBCArticleContent(driver, link)
@@ -425,7 +479,7 @@ def run_scrape_task():
                     article_data['time'] = 'N/A'
 
                 try:
-                    article_data['text'] = ' '.join(article.text.split()[:1000])
+                    article_data['text'] = ' '.join(article.text.split()[:1000]) # Take only first 1000 words
                     article_data['text'] = sanitise_text(article_data['text'])
                 except Exception as e:
                     print(f"Error retrieving text for link {link}:", e)
@@ -444,20 +498,24 @@ def run_scrape_task():
                 
         driver.quit()
         results_recommendations = []
+        results_sources_suggested = []
         results_sources_detected = []
         
         try:
             # Get results from EquiQuote
-            results_recommendations, results_sources_detected = get_equiquote_results(text_list)
+            results_recommendations, results_sources_suggested, results_sources_detected = get_equiquote_results(text_list)
             
             # Incorporate the results into articles_data
             for i, data in enumerate(articles_data):
                 data['recommendations'] = results_recommendations[i] if i < len(results_recommendations) else 'N/A'
                 data['sources_detected'] = results_sources_detected[i] if i < len(results_sources_detected) else 'N/A'
+                data['source_suggestions'] = results_sources_suggested[i] if i < len(results_sources_suggested) else 'N/A'
         except Exception as e:
             print("Error getting results from EquiQuote:", e)
             for data in articles_data:
-                data['results'] = 'N/A'
+                data['recommendations'] = 'N/A'
+                data['sources_detected'] = 'N/A'
+                data['source_suggestions'] = 'N/A'
 
         # Save the articles data to a CSV
         date_str = datetime.now().strftime('%Y-%m-%d')
@@ -465,7 +523,7 @@ def run_scrape_task():
 
         try:
             with open(filename, 'w', newline='') as csvfile:
-                fieldnames = ['title', 'byline', 'time', 'link', 'text', 'recommendations', 'sources_detected']
+                fieldnames = ['title', 'byline', 'time', 'link', 'text', 'recommendations', 'source_suggestions', 'sources_detected']
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
                 writer.writeheader()
