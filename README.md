@@ -7,16 +7,21 @@ This script is meant to help test the quality of results from EquiQuote, my 2023
 ## Setup
 
 1. **Clone this repository:**
+
    ```bash
    git clone https://gitfront.io/r/user-7653615/hHok8ubE1FTX/equiquote-scraper.git
    cd equiquote-scraper
    ```
+
 2. **Set up a virtual environment:**
+
    ```bash
    python3 -m venv venv
    source venv/bin/activate
    ```
+
 3. **Install the required Python packages:**
+
    ```bash
    pip install -r requirements.txt
    ```
@@ -30,11 +35,13 @@ This script is meant to help test the quality of results from EquiQuote, my 2023
     cd your_repository
     source venv/bin/activate
     ```
+
 2. **Run the scraper:**
 
     ```bash
     python scraper.py
     ```
+
 3. **After running the scraper, you will find the scraped data in the `data` folder. The scraper increments the counter in `counter.txt` every time it runs and will stop after running five times. To reset it, replace the contents of `counter.txt` with "0".**
 
 ## (Optional) Scheduling the Scraper
@@ -46,13 +53,14 @@ Cron is a time-based job scheduler in Unix-like operating systems. You can use i
    ```bash
    crontab -e
    ```
+
 This command opens the crontab file for the current user in the default text editor.
 
-2. **Add a new line to schedule the scraper, specifying the desired frequency and directing the output to `cron.log`:**
+2. **Add a new cron job:**
 
 In the editor, add a new line with the following format:
 
-    ```bash
+   ```bash
    0 * * * * cd /path/to/equiquote-scraper && /path/to/venv/bin/python /path/to/equiquote-scraper/scraper.py >> /path/to/equiquote-scraper/cron.log 2>&1
    ```
 
@@ -60,7 +68,16 @@ Replace /path/to/python, /path/to/scraper.py, and /path/to/cron.log with the app
 
 In this example, the scraper will run every hour at minute 0. Adjust the cron schedule expression as needed.
 
-3. **Save and exit the crontab editor. The scraper will now run automatically at the specified intervals and log the output and any errors to cron.log.**
+3. **Save and exit the editor:**
+
+After adding the cron job, save the changes and exit the text editor. The scraper should now run automatically at the specified intervals and log the output and any errors to `cron.log`. You can view the scheduled tasks by typing: 
+
+   ```bash
+   crontab -l
+   ```
+**Note for vi and vim users**
+
+If your default editor is vi or vim, you'll need to enter "insert mode" before you can begin typing in the file. To do this, press the i key. You can then start editing the file. When you're done editing, press the Esc key to exit insert mode. To save your changes and exit the editor, type :wq and press Enter. If you want to exit without saving changes, type :q! and press Enter.
 
 ## Licence
 This project is licensed under the terms of the license provided in the `LICENSE.txt` file.
