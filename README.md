@@ -35,7 +35,32 @@ This script is meant to help test the quality of results from EquiQuote, my 2023
     ```bash
     python scraper.py
     ```
-3. **After running the scraper, you will find the scraped data in the `data` folder. The scraper also increments the counter in `counter.txt` every time it runs.**
+3. **After running the scraper, you will find the scraped data in the `data` folder. The scraper increments the counter in `counter.txt` every time it runs and will stop after running five times. To reset it, replace the contents of `counter.txt` with "0".**
+
+## (Optional) Scheduling the Scraper
+
+Cron is a time-based job scheduler in Unix-like operating systems. You can use it to schedule the scraper to run at specific intervals, such as daily or weekly.
+
+1. **Open your crontab file for editing:**
+
+   ```bash
+   crontab -e
+   ```
+This command opens the crontab file for the current user in the default text editor.
+
+2. **Add a new line to schedule the scraper, specifying the desired frequency and directing the output to `cron.log`:**
+
+In the editor, add a new line with the following format:
+
+    ```bash
+   0 * * * * cd /path/to/equiquote-scraper && /path/to/venv/bin/python /path/to/equiquote-scraper/scraper.py >> /path/to/equiquote-scraper/cron.log 2>&1
+   ```
+
+Replace /path/to/python, /path/to/scraper.py, and /path/to/cron.log with the appropriate paths. The >> redirects the standard output and the 2>&1 redirects the standard error to the specified log file.
+
+In this example, the scraper will run every hour at minute 0. Adjust the cron schedule expression as needed.
+
+3. **Save and exit the crontab editor. The scraper will now run automatically at the specified intervals and log the output and any errors to cron.log.**
 
 ## Licence
 This project is licensed under the terms of the license provided in the `LICENSE.txt` file.
