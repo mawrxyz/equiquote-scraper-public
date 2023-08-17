@@ -4,7 +4,7 @@ This code scrapes the links of the top 5 online stories from the Daily Mail, BBC
 
 This script is meant to help test the quality of results from EquiQuote, my 2023 dissertation project for my Master of Science in Computational and Data Journalism at Cardiff University. The three news outlets chosen were identified as the [top 3 news brands](https://pressgazette.co.uk/media-audience-and-business-data/media_metrics/most-popular-websites-news-uk-monthly-2/) in the UK by the Press Gazette in July 2023.
 
-## Setup
+## Set Up
 
 1. **Clone this repository:**
 
@@ -27,22 +27,13 @@ This script is meant to help test the quality of results from EquiQuote, my 2023
    ```
 4. **Download the appropriate version of [ChromeDriver](https://chromedriver.chromium.org/home) for your system and place it in your PATH or specify its location in your code.**
 
-## Running the scraper
-
-1. **Make sure you are in the project directory and your virtual environment is activated:**
-
-    ```bash
-    cd your_repository
-    source venv/bin/activate
-    ```
-
-2. **Run the scraper:**
+5. **Run the scraper:**
 
     ```bash
     python scraper.py
     ```
 
-3. **After running the scraper, you will find the scraped data in the `data` folder. The scraper increments the counter in `counter.txt` every time it runs and will stop after running five times. To reset it, replace the contents of `counter.txt` with "0".**
+After running the scraper, you will find the scraped data in the `data` folder. The scraper increments the counter in `counter.txt` every time it runs and will stop after running five times. To reset it, replace the contents of `counter.txt` with "0".
 
 ## (Optional) Scheduling the Scraper
 
@@ -53,8 +44,6 @@ Cron is a time-based job scheduler in Unix-like operating systems. You can use i
    ```bash
    crontab -e
    ```
-
-This command opens the crontab file for the current user in the default text editor.
 
 2. **Add a new cron job:**
 
@@ -75,9 +64,8 @@ After adding the cron job, save the changes and exit the text editor. The scrape
    ```bash
    crontab -l
    ```
-**Note for vi and vim users**
 
-If your default editor is vi or vim, you'll need to enter "insert mode" before you can begin typing in the file. To do this, press the i key. You can then start editing the file. When you're done editing, press the Esc key to exit insert mode. To save your changes and exit the editor, type :wq and press Enter. If you want to exit without saving changes, type :q! and press Enter.
+**Note for vi and vim users:** If your default editor is vi or vim, you'll need to enter "insert mode" before you can begin typing in the file. To do this, press the i key. You can then start editing the file. When you're done editing, press the Esc key to exit insert mode. To save your changes and exit the editor, type :wq and press Enter. If you want to exit without saving changes, type :q! and press Enter.
 
 ## Licence
 This project is licensed under the terms of the license provided in the `LICENSE.txt` file.
