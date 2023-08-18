@@ -371,6 +371,7 @@ def get_equiquote_results(text_list):
                     print("Modal closed")
         except NoSuchElementException:
             print("No job links found.")
+            source_suggestions_list.append('N/A')
 
         try:
             recommendations_element = driver.find_element(By.ID, 'recommendations')
