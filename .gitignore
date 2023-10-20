@@ -1,2 +1,4 @@
 .DS_Store
 .ipynb_checkpoints
+exclude_folder/*
+!exclude_folder/.gitkeep
